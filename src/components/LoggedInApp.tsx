@@ -8,7 +8,6 @@ import { Board } from "@/components/Board";
 import { ActionDrawer } from "@/components/ActionDrawer";
 import { RetroCountdown } from "@/components/RetroCountdown";
 import { RetroDurationModal } from "@/components/RetroDurationModal";
-import { RetroSynthesisPanel } from "@/components/RetroSynthesisPanel";
 import { BrainCircuit, Loader2, Sparkles, Link2, Check, SkipForward, Wand2 } from "lucide-react";
 
 export function LoggedInApp() {
@@ -20,7 +19,6 @@ export function LoggedInApp() {
     retroRevealed,
     retroViewerVotesUsed,
     retroSynthesisStatus,
-    retroSynthesisResult,
     retroSynthesisError,
     applyLocalRetroReveal,
     createRetroBoardWithDuration,
@@ -207,9 +205,6 @@ export function LoggedInApp() {
             <span className="font-semibold">AI adımı başarısız: </span>
             {retroSynthesisError}
           </div>
-        ) : null}
-        {retroBoardId && retroSynthesisStatus === "DONE" && retroSynthesisResult ? (
-          <RetroSynthesisPanel result={retroSynthesisResult} />
         ) : null}
         <Board />
       </div>

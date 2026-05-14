@@ -36,6 +36,9 @@ interface CardState {
   addGroup: (title: string) => Promise<void>;
   updateCardGroup: (cardId: string, groupId: string | null) => Promise<void>;
   updateCardAudio: (cardId: string, audioUrl: string) => Promise<void>;
+  createAction: (action: Omit<Action, 'id'>) => Promise<void>;
+  updateActionStatus: (actionId: string, status: Action['status']) => Promise<void>;
+  upsertActionFromCard: (cardId: string, status: Action['status']) => Promise<void>;
 }
 
 type RetroBoardPayload = Awaited<ReturnType<typeof ApiService.getRetroBoard>>;
@@ -138,10 +141,14 @@ export const useCardStore = create<CardState>((set, get) => ({
 
       if (boardId && user) {
         try {
-          const state = await ApiService.getRetroBoard(boardId, user.id);
+          const [state, actions] = await Promise.all([
+            ApiService.getRetroBoard(boardId, user.id),
+            ApiService.getActions(),
+          ]);
           set({
             persons,
             ...mapRetroState(state),
+            actions,
             isLoading: false,
             error: null,
           });
@@ -157,6 +164,7 @@ export const useCardStore = create<CardState>((set, get) => ({
             retroSynthesisError: null,
             groups: [],
             cards: [],
+            actions: [],
             error: null,
             isLoading: false,
           });
@@ -169,6 +177,7 @@ export const useCardStore = create<CardState>((set, get) => ({
           persons,
           groups: [],
           cards: [],
+          actions: [],
           retroEndsAtIso: null,
           retroRevealed: false,
           retroViewerVotesUsed: 0,
@@ -210,6 +219,7 @@ export const useCardStore = create<CardState>((set, get) => ({
         retroSynthesisStatus: 'IDLE',
         retroSynthesisResult: null,
         retroSynthesisError: null,
+        actions: [],
       });
     }
   },
@@ -219,8 +229,11 @@ export const useCardStore = create<CardState>((set, get) => ({
     const user = get().currentUser;
     if (!boardId || !user) return;
     try {
-      const state = await ApiService.getRetroBoard(boardId, user.id);
-      set(mapRetroState(state));
+      const [state, actions] = await Promise.all([
+        ApiService.getRetroBoard(boardId, user.id),
+        ApiService.getActions(),
+      ]);
+      set({ ...mapRetroState(state), actions });
     } catch {
       set({
         retroBoardId: null,
@@ -232,6 +245,7 @@ export const useCardStore = create<CardState>((set, get) => ({
         retroSynthesisError: null,
         groups: [],
         cards: [],
+        actions: [],
       });
     }
   },
@@ -389,5 +403,51 @@ export const useCardStore = create<CardState>((set, get) => ({
     } catch (error) {
       console.error(error);
     }
+  },
+
+  createAction: async (action) => {
+    try {
+      const created = await ApiService.createAction(action);
+      set((state) => ({ actions: [...state.actions, created] }));
+    } catch (error) {
+      console.error(error);
+    }
+  },
+
+  updateActionStatus: async (actionId, status) => {
+    try {
+      const updated = await ApiService.updateAction(actionId, { status });
+      set((state) => ({
+        actions: state.actions.map((a) => (a.id === updated.id ? updated : a)),
+      }));
+    } catch (error) {
+      console.error(error);
+    }
+  },
+
+  upsertActionFromCard: async (cardId, status) => {
+    const { cards, actions, currentUser, persons } = get();
+    const card = cards.find((c) => c.id === cardId);
+    if (!card || card.contentMasked) return;
+    const existing = actions.find((a) => a.cardId === cardId);
+    if (existing) {
+      await get().updateActionStatus(existing.id, status);
+      return;
+    }
+    const raw = card.content.trim();
+    const title = raw.length > 120 ? `${raw.slice(0, 117)}…` : raw || 'Retro maddesi';
+    const assigneeId =
+      card.authorId ||
+      currentUser?.id ||
+      persons.find((p) => p.role === 'user')?.id ||
+      persons[0]?.id ||
+      'u1';
+    await get().createAction({
+      cardId,
+      title,
+      description: raw,
+      assigneeId,
+      status,
+    });
   },
 }));

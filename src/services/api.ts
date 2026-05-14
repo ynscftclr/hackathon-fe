@@ -332,6 +332,15 @@ export const ApiService = {
     return newAction;
   },
 
+  async updateAction(id: string, updates: Partial<Pick<Action, 'status' | 'title' | 'description' | 'assigneeId'>>): Promise<Action> {
+    console.log(`PATCH http://localhost:8080/api/actions/${id}`, updates);
+    await randomDelay();
+    const index = MOCK_ACTIONS.findIndex((a) => a.id === id);
+    if (index === -1) throw new Error('Action not found');
+    MOCK_ACTIONS[index] = { ...MOCK_ACTIONS[index], ...updates };
+    return { ...MOCK_ACTIONS[index] };
+  },
+
   // AI Semantic Grouping Simulation (Frontend Mock)
   async autoGroupCards(cards: Card[]): Promise<Card[]> {
     console.log('POST http://localhost:8080/api/ai/group (Mock AI processing)');

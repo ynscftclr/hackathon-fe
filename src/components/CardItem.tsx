@@ -14,6 +14,18 @@ interface Props {
 }
 
 export const CardItem: React.FC<Props> = ({ card }) => {
+  const {
+    persons,
+    retroBoardId,
+    retroRevealed,
+    retroSynthesisStatus,
+    currentUser,
+    retroViewerVotesUsed,
+    addRetroCardEmoji,
+    setRetroCardVote,
+    removeRetroCardVote,
+  } = useCardStore();
+  const synthLocksDrag = Boolean(retroBoardId && retroSynthesisStatus === 'DONE');
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: card.id,
     disabled: card.contentMasked === true,
@@ -27,17 +39,6 @@ export const CardItem: React.FC<Props> = ({ card }) => {
 
   const { analyzeCard, isAnalyzing } = useAiStore();
   const { setActionDrawerOpen, setSelectedCardId } = useUiStore();
-  const {
-    persons,
-    retroBoardId,
-    retroRevealed,
-    retroSynthesisStatus,
-    currentUser,
-    retroViewerVotesUsed,
-    addRetroCardEmoji,
-    setRetroCardVote,
-    removeRetroCardVote,
-  } = useCardStore();
 
   const author = persons.find((p) => p.id === card.authorId);
   const authorBadge =
@@ -45,7 +46,8 @@ export const CardItem: React.FC<Props> = ({ card }) => {
       ? '**'
       : `@${author?.name || 'Anonim'}`;
   const masked = card.contentMasked === true;
-  const showAnalyze = !masked && !retroBoardId;
+  const showAnalyze =
+    !masked && (!retroBoardId || (Boolean(retroBoardId) && retroSynthesisStatus === 'DONE'));
 
   const synthOk = retroSynthesisStatus === "IDLE" || retroSynthesisStatus === "FAILED";
   const showRetroInteractions = Boolean(
@@ -78,15 +80,17 @@ export const CardItem: React.FC<Props> = ({ card }) => {
     setEmojiDraft('');
   };
 
+  const noDrag = masked;
+
   return (
     <div
       ref={setNodeRef}
       style={style}
       className={`bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-3 flex flex-col gap-3 group hover:shadow-md transition-shadow relative ${
-        masked ? 'cursor-default' : 'cursor-grab active:cursor-grabbing'
+        noDrag ? 'cursor-default' : 'cursor-grab active:cursor-grabbing'
       }`}
       {...attributes}
-      {...(masked ? {} : listeners)}
+      {...(noDrag ? {} : listeners)}
     >
       <div className="flex justify-between items-start gap-2">
         <p className="text-slate-700 text-sm leading-relaxed flex-1 font-medium">
@@ -108,6 +112,14 @@ export const CardItem: React.FC<Props> = ({ card }) => {
           </button>
         ) : null}
       </div>
+
+      {synthLocksDrag ? (
+        <p className="text-xs text-slate-500">
+          Katılıyorum <span className="tabular-nums font-medium text-slate-700">{agree}</span>
+          <span className="mx-1.5 text-slate-300">·</span>
+          Katılmıyorum <span className="tabular-nums font-medium text-slate-700">{disagree}</span>
+        </p>
+      ) : null}
 
       {showRetroInteractions ? (
         <div

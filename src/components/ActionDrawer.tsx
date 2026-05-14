@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useUiStore } from '@/store/useUiStore';
 import { useAiStore } from '@/store/useAiStore';
 import { useCardStore } from '@/store/useCardStore';
@@ -6,12 +6,31 @@ import { X, CheckCircle2, BrainCircuit } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export const ActionDrawer: React.FC = () => {
-  const { isActionDrawerOpen, setActionDrawerOpen } = useUiStore();
-  const { analysisResult, isAnalyzing } = useAiStore();
-  const { persons } = useCardStore();
+  const { isActionDrawerOpen, setActionDrawerOpen, selectedCardId } = useUiStore();
+  const { analysisResult, isAnalyzing, clearAnalysis } = useAiStore();
+  const { persons, createAction } = useCardStore();
+  const [saving, setSaving] = useState(false);
 
   const handleClose = () => {
     setActionDrawerOpen(false);
+  };
+
+  const handleConfirm = async () => {
+    if (!analysisResult || !selectedCardId) return;
+    setSaving(true);
+    try {
+      await createAction({
+        cardId: selectedCardId,
+        title: analysisResult.suggestedTitle,
+        description: analysisResult.suggestedDescription,
+        assigneeId: analysisResult.recommendedAssigneeId,
+        status: 'todo',
+      });
+      clearAnalysis();
+      handleClose();
+    } finally {
+      setSaving(false);
+    }
   };
 
   const assignedPerson = persons.find(p => p.id === analysisResult?.recommendedAssigneeId);
@@ -80,11 +99,13 @@ export const ActionDrawer: React.FC = () => {
                   )}
 
                   <button 
-                    onClick={handleClose}
-                    className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-3 rounded-xl shadow-sm transition-all flex justify-center items-center gap-2 mt-4 active:scale-[0.98]"
+                    type="button"
+                    onClick={() => void handleConfirm()}
+                    disabled={saving || !selectedCardId}
+                    className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-3 rounded-xl shadow-sm transition-all flex justify-center items-center gap-2 mt-4 active:scale-[0.98] disabled:opacity-60"
                   >
                     <CheckCircle2 size={18} />
-                    Aksiyonu Onayla ve Oluştur
+                    {saving ? 'Kaydediliyor…' : 'Aksiyonu Onayla ve Oluştur'}
                   </button>
                 </div>
               ) : (
